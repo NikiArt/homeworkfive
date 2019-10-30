@@ -8,6 +8,13 @@
 
 import Foundation
 
+enum CarError: Error {
+    case noSuchAction
+    case isLimitOfQuantity
+    case outOfCargo
+    
+}
+
 enum CargoAction {
     case load
     case upload
@@ -28,7 +35,7 @@ protocol Car {
     var isOpenWindows: Bool {get set}
     var currentVolume: UInt {get set}
     
-    func customAction(action: CustomActions)
+    func customAction(action: CustomActions) throws
 }
 
 extension Car {
@@ -52,23 +59,21 @@ extension Car {
         }
     }
     
-    mutating func addCargo(load: CargoAction, volume: UInt) {
+    mutating func addCargo(load: CargoAction, volume: UInt) throws {
         if load == .load {
             let amount = volume + currentVolume
-         if amount > self.volume {
-                currentVolume = self.volume
-                print("У автомобиля \(brand): Превышен допустимый объем. \(amount - self.volume) осталось не загружено")
-            } else {
-                currentVolume += volume
+            guard amount <= self.volume else {
+                currentVolume = volume
+                throw CarError.isLimitOfQuantity
             }
+            currentVolume += volume
         } else {
             let amount = Int(currentVolume - volume)
-            if amount < 0 {
+            guard amount >= 0 else {
                 currentVolume = 0
-                print("У автомобиля \(brand): Автомобиль разгружен полностью.")
-            } else {
-                currentVolume -= volume
+                throw CarError.outOfCargo
             }
+            currentVolume -= volume
             print("У автомобиля \(brand): Текущая загрузка составляет \(currentVolume)")
         }
     }
@@ -93,14 +98,13 @@ class SportCar: Car {
         nitro = false
     }
     
-    func customAction(action: CustomActions) {
-        if action == .sportActionStartNitro || action == .sportActionStopNitro {
-            print("Выполняется действие: \(action.rawValue)")
-            nitro(action: action)
-            
-        } else {
+    func customAction(action: CustomActions) throws {
+        guard action == .sportActionStartNitro || action == .sportActionStopNitro else {
             print("этот автомобиль не предназначен для выполнения этого действия")
+            throw CarError.noSuchAction
         }
+        print("Выполняется действие: \(action.rawValue)")
+        nitro(action: action)
     }
     
     private func nitro(action: CustomActions) {
@@ -177,12 +181,24 @@ extension TruсkCar: CustomStringConvertible {
 var nissanGTR = SportCar(brand: "Nissan", year: 2009, volume: 200)
 var scaniaTruck = TruсkCar(brand: "Scania", year: 2017, volume: 3000)
 
-nissanGTR.customAction(action: .sportActionStartNitro)
-scaniaTruck.addCargo(load: .load, volume: 1000)
+do {
+   try nissanGTR.customAction(action: .sportActionStartNitro) }
+catch let error { print("Ошибка выполнения действия \(error.self)") }
+
+do {
+    try nissanGTR.customAction(action: .trunkActionDown) }
+catch let error { print("Ошибка выполнения действия \(error.self)") }
+
+do {
+try scaniaTruck.addCargo(load: .load, volume: 10000) }
+catch let error { print("Ошибка загрузки \(error.self)")}
 scaniaTruck.customAction(action: .trunkActionUp)
 nissanGTR.useEngine()
 scaniaTruck.useWindows()
-nissanGTR.customAction(action: .sportActionStartNitro)
+do {
+    try nissanGTR.customAction(action: .sportActionStartNitro) }
+catch let error { print("Ошибка выполнения действия \(error.self)") }
 scaniaTruck.useWindows()
 print(nissanGTR)
 print(scaniaTruck)
+
